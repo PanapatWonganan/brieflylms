@@ -108,7 +108,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const register = async (data: RegisterData) => {
     try {
       if (data.password !== data.confirmPassword) {
-        return { success: false, error: 'Passwords do not match' }
+        return { success: false, error: 'รหัสผ่านไม่ตรงกัน' }
       }
 
       const response = await registerUser({
@@ -117,7 +117,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         full_name: data.fullName,
         phone: data.phone,
       })
-      
+
       if (response.success && response.user && response.token) {
         localStorage.setItem('auth_token', response.token)
         setUser({
@@ -130,11 +130,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
         })
         return { success: true }
       } else {
-        return { success: false, error: response.message || 'Registration failed' }
+        // Handle validation errors
+        let errorMessage = response.message || 'การสมัครสมาชิกล้มเหลว'
+
+        // Check if there are specific field errors
+        if (response.errors) {
+          const errors = response.errors as any
+          if (errors.email && errors.email.length > 0) {
+            errorMessage = 'อีเมลนี้ถูกใช้งานแล้ว กรุณาใช้อีเมลอื่น'
+          } else if (errors.password && errors.password.length > 0) {
+            errorMessage = errors.password[0]
+          } else if (errors.full_name && errors.full_name.length > 0) {
+            errorMessage = errors.full_name[0]
+          } else {
+            // Get first error message
+            const firstError = Object.values(errors)[0]
+            if (Array.isArray(firstError) && firstError.length > 0) {
+              errorMessage = firstError[0]
+            }
+          }
+        }
+
+        return { success: false, error: errorMessage }
       }
     } catch (error) {
       console.error('Registration error:', error)
-      return { success: false, error: 'Network error' }
+      return { success: false, error: 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง' }
     }
   }
 
